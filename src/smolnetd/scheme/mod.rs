@@ -2,7 +2,7 @@ use netutils::getcfg;
 use smoltcp;
 use smoltcp::iface::{NeighborCache, EthernetInterface, EthernetInterfaceBuilder};
 use smoltcp::socket::SocketSet as SmoltcpSocketSet;
-use smoltcp::wire::{EthernetAddress, IpAddress, IpCidr, IpEndpoint, Ipv4Address};
+use smoltcp::wire::{EthernetAddress, IpAddress, IpCidr, Ipv4Address};
 use std::cell::RefCell;
 use std::collections::{VecDeque, BTreeMap};
 use std::fs::File;
@@ -237,19 +237,4 @@ fn post_fevent(scheme_file: &mut File, fd: usize, event: usize, data_len: usize)
         })
         .map(|_| ())
         .map_err(|e| Error::from_io_error(e, "failed to post fevent"))
-}
-
-fn parse_endpoint(socket: &str) -> IpEndpoint {
-    let mut socket_parts = socket.split(':');
-    let host = IpAddress::Ipv4(
-        Ipv4Address::from_str(socket_parts.next().unwrap_or(""))
-            .unwrap_or_else(|_| Ipv4Address::new(0, 0, 0, 0)),
-    );
-
-    let port = socket_parts
-        .next()
-        .unwrap_or("")
-        .parse::<u16>()
-        .unwrap_or(0);
-    IpEndpoint::new(host, port)
 }

@@ -1,11 +1,13 @@
 use smoltcp::socket::{SocketHandle, TcpSocket, TcpSocketBuffer};
+use smoltcp::wire::IpEndpoint;
 use std::str;
+use std::str::FromStr;
 use syscall::{Error as SyscallError, Result as SyscallResult};
 use syscall;
 
 use port_set::PortSet;
 use super::socket::{DupResult, SchemeFile, SchemeSocket, SocketFile, SocketScheme};
-use super::{parse_endpoint, SocketSet};
+use super::{SocketSet};
 
 pub type TcpScheme = SocketScheme<TcpSocket<'static>>;
 
@@ -58,8 +60,10 @@ impl<'a> SchemeSocket for TcpSocket<'a> {
     ) -> SyscallResult<(SocketHandle, Self::DataT)> {
         trace!("TCP open {}", path);
         let mut parts = path.split('/');
-        let remote_endpoint = parse_endpoint(parts.next().unwrap_or(""));
-        let mut local_endpoint = parse_endpoint(parts.next().unwrap_or(""));
+        let remote_endpoint = IpEndpoint::from_str(parts.next().unwrap_or(""))
+            .expect("Can't parse the remote IP");
+        let mut local_endpoint = IpEndpoint::from_str(parts.next().unwrap_or(""))
+            .expect("Can't parse the local IP");
 
         if local_endpoint.port > 0 && local_endpoint.port <= 1024 && uid != 0 {
             return Err(SyscallError::new(syscall::EACCES));

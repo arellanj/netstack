@@ -1,13 +1,14 @@
 use smoltcp::socket::{SocketHandle, UdpPacketBuffer, UdpSocket, UdpSocketBuffer};
 use smoltcp::wire::IpEndpoint;
 use std::str;
+use std::str::FromStr;
 use syscall::{Error as SyscallError, Result as SyscallResult};
 use syscall;
 
 use device::NetworkDevice;
 use port_set::PortSet;
 use super::socket::{DupResult, SchemeFile, SchemeSocket, SocketFile, SocketScheme};
-use super::{parse_endpoint, Smolnetd, SocketSet};
+use super::{Smolnetd, SocketSet};
 
 pub type UdpScheme = SocketScheme<UdpSocket<'static, 'static>>;
 
@@ -59,8 +60,10 @@ impl<'a, 'b> SchemeSocket for UdpSocket<'a, 'b> {
         port_set: &mut Self::SchemeDataT,
     ) -> SyscallResult<(SocketHandle, Self::DataT)> {
         let mut parts = path.split('/');
-        let remote_endpoint = parse_endpoint(parts.next().unwrap_or(""));
-        let mut local_endpoint = parse_endpoint(parts.next().unwrap_or(""));
+        let remote_endpoint =IpEndpoint::from_str(parts.next().unwrap_or(""))
+            .expect("Can't parse the remote IP");
+        let mut local_endpoint = IpEndpoint::from_str(parts.next().unwrap_or(""))
+            .expect("Can't parse the local IP");
 
         if local_endpoint.port > 0 && local_endpoint.port <= 1024 && uid != 0 {
             return Err(SyscallError::new(syscall::EACCES));
@@ -147,7 +150,7 @@ impl<'a, 'b> SchemeSocket for UdpSocket<'a, 'b> {
         let socket_handle = file.socket_handle();
         let file = match path {
             _ => {
-                let remote_endpoint = parse_endpoint(path);
+                let remote_endpoint = IpEndpoint::from_str(path).expect("Could not parse path");
                 if let SchemeFile::Socket(ref udp_handle) = *file {
                     SchemeFile::Socket(udp_handle.clone_with_data(
                         if remote_endpoint.is_specified() {
